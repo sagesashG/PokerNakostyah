@@ -57,16 +57,13 @@
     --minus-fg: #5a0f0f;
     --table: rgba(255, 255, 255, 0.55);
     --btn: linear-gradient(135deg, #2f8f3a, #6bb83b);
-    --page: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.14) 0 2px, transparent 3px) 0 0 / 22px 22px,
-      radial-gradient(circle at 70% 30%, rgba(20, 61, 18, 0.12) 0 2px, transparent 3px) 0 0 / 27px 27px,
-      linear-gradient(180deg, #8fd16b 0%, #4f9e3a 60%, #2f7a2a 100%);
+    --page: linear-gradient(rgba(20, 61, 18, 0.25), rgba(20, 61, 18, 0.25)),
+      url("https://upload.wikimedia.org/wikipedia/commons/2/29/Green_grass_nature.jpg") center / cover,
+      #4f9e3a;
   }
   [hidden] { display: none !important; }
   .theme-pick {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 5;
+    margin: 0 0 12px auto;
     padding: 6px 10px;
     font-size: 14px;
     color: var(--fg);
@@ -94,6 +91,8 @@
     backdrop-filter: blur(10px);
   }
   .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .add-box { margin-top: 10px; }
+  .add-box summary { cursor: pointer; color: var(--muted); font-size: 14px; }
   input, button { font: inherit; border-radius: 12px; border: 1px solid var(--line); padding: 10px 14px; }
   input:not([type=number]) { background: rgba(255, 255, 255, 0.08); color: var(--fg); }
   button { background: var(--btn); color: #fff; border: none; font-weight: 600; cursor: pointer; }
@@ -155,10 +154,22 @@
   }
   td input:disabled { opacity: 0.25; }
   td input:focus { outline: 2px solid #a78bfa; background: rgba(255, 255, 255, 0.1); }
-  #toast {
+  .float-pass {
     position: fixed;
     left: 50%;
     bottom: 20px;
+    transform: translateX(-50%);
+    padding: 16px 28px;
+    font-size: 18px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    z-index: 6;
+  }
+  .credit { position: fixed; left: 8px; bottom: 6px; font-size: 11px; color: #fff; opacity: 0.85; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+  .credit a { color: #fff; }
+  #toast {
+    position: fixed;
+    left: 50%;
+    top: 20px;
     transform: translateX(-50%);
     width: min(92vw, 560px);
     padding: 14px 18px;
@@ -192,14 +203,22 @@
 </div>
 
 <div id="room" hidden>
-  <div class="card row">
-    <span id="status"></span>
-    <span id="whoami"></span>
-    <span style="flex: 1"></span>
-    <input id="newName" placeholder="Имя игрока">
-    <button id="addBtn">Добавить</button>
-    <button id="passBtn" class="ghost">Передать ход</button>
-    <button id="switchBtn" class="ghost">Сменить</button>
+  <div class="card">
+    <div class="row">
+      <span id="status"></span>
+      <span id="whoami"></span>
+      <span style="flex: 1"></span>
+      <button id="switchBtn" class="ghost">Сменить</button>
+      <button id="leaveBtn" class="ghost">Выйти</button>
+    </div>
+    <details class="add-box">
+      <summary>Добавить игрока</summary>
+      <div class="row" style="margin-top: 10px">
+        <input id="newName" placeholder="Имя игрока">
+        <button id="addBtn">Добавить</button>
+      </div>
+    </details>
+    <button id="passBtn" hidden>Передать ход</button>
   </div>
 
   <div class="card" id="pick" hidden>
@@ -214,6 +233,12 @@
 </div>
 
 <div id="toast" hidden></div>
+
+<button id="floatPass" class="float-pass" hidden>Пропустить ход</button>
+
+<div id="credit" class="credit" hidden>
+  Фото: Dhivya Annadurai, <a href="https://commons.wikimedia.org/wiki/File:Green_grass_nature.jpg" target="_blank" rel="noopener">Wikimedia Commons</a>, CC BY-SA 4.0
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-database-compat.js"></script>
@@ -416,7 +441,13 @@ function render() {
 
   // Экран выбора: кто вы или телевизор.
   pick.hidden = !!mode;
-  document.getElementById('passBtn').hidden = !(mode && mode.type === 'player');
+  // Кнопка передачи хода внизу: появляется на телефоне игрока, чей сейчас ход.
+  const myIndex = mode && mode.type === 'player' ? players.findIndex(p => p.name === mode.name) : -1;
+  const myTurn = myIndex >= 0 && myIndex === turn;
+  const floatPass = document.getElementById('floatPass');
+  floatPass.hidden = !myTurn;
+  floatPass.textContent = state && state.entered ? 'Передать ход' : 'Пропустить ход';
+  document.getElementById('passBtn').hidden = true;
   document.getElementById('whoami').textContent =
     !mode ? '' : mode.type === 'player' ? `Вы: ${mode.name}` : 'Режим телевизора: все игроки';
 
@@ -443,7 +474,7 @@ function render() {
   }).join('') + '</tr>';
 
   html += '<tr><th></th>' + visible.map(() =>
-    SCHOOLS.map(sc => `<th class="school">${sc.title}<br>${sc.sub}</th>`).join('')
+    SCHOOLS.map(sc => `<th class="school">${sc.title}</th>`).join('')
   ).join('') + '</tr>';
 
   for (const r of ROWS) {
@@ -545,6 +576,8 @@ document.getElementById('pickList').addEventListener('click', e => {
 
 document.getElementById('viewBtn').onclick = () => setMode({ type: 'view' });
 document.getElementById('switchBtn').onclick = () => setMode(null);
+// Выход на страницу входа. Комната не удаляется, вернуться можно из списка активных комнат.
+document.getElementById('leaveBtn').onclick = leaveRoom;
 
 document.getElementById('joinBtn').onclick = () => {
   const c = document.getElementById('code').value.trim();
@@ -577,7 +610,7 @@ document.getElementById('addBtn').onclick = () => {
 };
 
 // Передача хода: следующий игрок, запись этого хода сбрасывается.
-document.getElementById('passBtn').onclick = () => {
+const passTurn = () => {
   db.ref(`rooms/${code}`).transaction(room => {
     if (!room || !room.players || !room.players.length) return room;
     room.turn = ((room.turn || 0) + 1) % room.players.length;
@@ -587,6 +620,8 @@ document.getElementById('passBtn').onclick = () => {
     return room;
   });
 };
+document.getElementById('passBtn').onclick = passTurn;
+document.getElementById('floatPass').onclick = passTurn;
 
 // Одно значение за ход. Запись не передаёт ход: его можно исправить и передать вручную.
 function writeCell(playerIndex, school, k, v) {
@@ -629,6 +664,7 @@ const themeSel = document.getElementById('themeSel');
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
   themeSel.value = t;
+  document.getElementById('credit').hidden = t !== 'grass';
 }
 let savedTheme = 'main';
 try { savedTheme = localStorage.getItem('kosti.theme') || 'main'; } catch (e) { /* без хранилища тема не запомнится */ }
