@@ -5,63 +5,136 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Кости: учёт</title>
 <style>
-  :root { --bg:#f5f5f0; --fg:#222; --line:#aaa; --head:#e6e6df; --calc:#fff3b0; --turn:#cfe3ff; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#1c1c1c; --fg:#eee; --line:#555; --head:#2c2c2c; --calc:#5a5118; --turn:#24406a; }
+  :root {
+    --fg: #f4f6ff;
+    --muted: #9aa3c7;
+    --card: rgba(255, 255, 255, 0.08);
+    --line: rgba(255, 255, 255, 0.14);
+    --head: rgba(255, 255, 255, 0.12);
+    --turn: rgba(250, 204, 21, 0.28);
+    --calc: rgba(250, 204, 21, 0.14);
+    --plus-bg: rgba(59, 130, 246, 0.30);
+    --plus-fg: #bfdbfe;
+    --minus-bg: rgba(248, 113, 113, 0.22);
+    --minus-fg: #fecaca;
+    --btn: linear-gradient(135deg, #7c3aed, #db2777);
   }
-  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; font-size:18px; }
-  h1 { font-size:24px; margin:0 0 12px; }
-  .panel { margin-bottom:16px; }
-  input, button { font:inherit; padding:8px 12px; }
-  table { border-collapse:collapse; width:100%; }
-  th, td { border:1px solid var(--line); padding:6px 8px; text-align:center; }
-  th { background:var(--head); }
-  th.turn { background:var(--turn); }
-  td.calc { background:var(--calc); font-weight:bold; }
-  td.row-label { text-align:left; white-space:nowrap; }
-  td input { width:70px; text-align:center; font:inherit; background:transparent; color:var(--fg); border:none; }
-  .dice input { width:56px; text-align:center; }
-  #status { color:#888; font-size:14px; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 16px;
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.45), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(236, 72, 153, 0.35), transparent 60%),
+      linear-gradient(160deg, #0f172a, #1e1b4b 60%, #172554);
+    background-attachment: fixed;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(10px);
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  input, button { font: inherit; border-radius: 12px; border: 1px solid var(--line); padding: 10px 14px; }
+  input:not([type=number]) { background: rgba(255, 255, 255, 0.08); color: var(--fg); }
+  button { background: var(--btn); color: #fff; border: none; font-weight: 600; cursor: pointer; }
+  button.ghost { background: rgba(255, 255, 255, 0.12); }
+  #status { color: var(--muted); font-size: 14px; }
+  .rooms { margin-top: 12px; display: grid; gap: 8px; }
+  .rooms .title { color: var(--muted); font-size: 14px; }
+  .room-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    width: 100%; text-align: left;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--line);
+    color: var(--fg);
+  }
+  .room-item small { color: var(--muted); font-weight: 400; }
+  .scroll { overflow-x: auto; border-radius: 18px; }
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 100%;
+    background: rgba(15, 23, 42, 0.35);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  th, td { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
+  th { background: var(--head); font-weight: 700; }
+  th.player { font-size: 17px; padding: 10px; }
+  th.school { font-size: 12px; color: var(--muted); font-weight: 600; }
+  th.turn { background: var(--turn); }
+  td.label { text-align: left; white-space: nowrap; font-weight: 600; min-width: 130px; }
+  td.plus-row { background: var(--plus-bg); color: var(--plus-fg); }
+  td.minus-row { background: var(--minus-bg); color: var(--minus-fg); }
+  td.calc { background: var(--calc); font-weight: 800; white-space: nowrap; }
+  td.calc .bonus { color: #fde68a; font-weight: 700; }
+  td input {
+    width: 56px;
+    text-align: center;
+    font: inherit;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  td input:disabled { opacity: 0.25; }
+  td input:focus { outline: 2px solid #a78bfa; background: rgba(255, 255, 255, 0.1); }
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    width: min(92vw, 560px);
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: #7f1d1d;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+  }
 </style>
 </head>
 <body>
-<h1>Кости: учёт игры</h1>
 
-<div id="join" class="panel">
-  <input id="code" inputmode="numeric" placeholder="Код комнаты" maxlength="6">
-  <button id="joinBtn">Войти</button>
-  <button id="newBtn">Новая комната</button>
+<div id="join" class="card">
+  <div class="row">
+    <input id="code" inputmode="numeric" placeholder="Код комнаты" maxlength="6">
+    <button id="joinBtn">Войти</button>
+    <button id="newBtn" class="ghost">Новая комната</button>
+  </div>
+  <div class="rooms">
+    <div class="title" id="roomsTitle">Активные комнаты загружаются…</div>
+    <div id="roomList"></div>
+  </div>
 </div>
 
 <div id="room" hidden>
-  <div class="panel">
-    Комната: <b id="roomCode"></b> <span id="status"></span>
-    <div style="margin-top:8px">
-      <input id="newName" placeholder="Имя игрока">
-      <button id="addBtn">Добавить игрока</button>
-      <button id="nextBtn">Передать ход</button>
-    </div>
+  <div class="card row">
+    <input id="newName" placeholder="Имя игрока">
+    <button id="addBtn">Добавить</button>
+    <button id="passBtn" class="ghost">Передать ход</button>
+    <span id="status"></span>
   </div>
-  <div class="panel" id="turnInfo"></div>
-  <div style="overflow-x:auto"><table id="sheet"></table></div>
-  <div class="panel">
-    <b>Проверка кубиков</b>
-    <div class="dice" style="margin-top:8px">
-      <input type="number" min="1" max="6" class="d">
-      <input type="number" min="1" max="6" class="d">
-      <input type="number" min="1" max="6" class="d">
-      <input type="number" min="1" max="6" class="d">
-      <input type="number" min="1" max="6" class="d">
-      <button id="checkBtn">Определить</button>
-    </div>
-    <div id="result" style="margin-top:8px"></div>
-  </div>
+  <div class="card" id="turnInfo" style="font-size: 20px; font-weight: 700"></div>
+  <div class="scroll"><table id="sheet"></table></div>
 </div>
+
+<div id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-database-compat.js"></script>
 <script>
-// Вставьте свои данные из Firebase (Настройки проекта → Ваши приложения → Конфигурация).
 const firebaseConfig = {
   apiKey: 'AIzaSyCLBAG_CUE-efrhEJpKRDO2e2mzkeJCnB0',
   authDomain: 'pokernakostyah.firebaseapp.com',
@@ -74,84 +147,235 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Строки таблицы, как в гугл-таблице.
+// Комната живёт, пока в неё вносят изменения. Через два дня без изменений она удаляется.
+const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000;
+
+// Три школы. У каждого игрока своя колонка на каждую школу.
+const SCHOOLS = [
+  { id: 1, title: 'Школа 1', sub: 'по порядку' },
+  { id: 2, title: 'Школа 2', sub: 'любой порядок' },
+  { id: 3, title: 'Школа 3', sub: 'снизу вверх' }
+];
+
 const COMBOS = ['pair', 'twoPair', 'full', 'kare', 'poker'];
+// Порядок заполнения школы 1 (сверху вниз). Школа 3 — то же, но в обратном порядке.
+const SEQ = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'plus', 'minus', 'pair', 'twoPair', 'full', 'kare', 'poker'];
+
+// Строки таблицы в порядке отображения.
 const ROWS = [
   ...[1, 2, 3, 4, 5, 6].map(n => ({ k: 'u' + n, t: String(n) })),
-  { k: 'sumU', t: 'Сумма 1–6', calc: true },
-  { k: 'bonus', t: 'Бонус (от 60: +30)', calc: true },
-  { k: 'plus', t: '+' },
-  { k: 'minus', t: '−' },
+  { k: 'upper', t: 'Сумма 1–6 + бонус', calc: true },
+  { k: 'plus', t: '+', cls: 'plus-row' },
+  { k: 'minus', t: '−', cls: 'minus-row' },
   { k: 'pair', t: 'П' },
   { k: 'twoPair', t: '2П' },
-  { k: 'full', t: 'F' },
-  { k: 'kare', t: 'K' },
-  { k: 'poker', t: 'P' },
-  { k: 'total', t: 'Итог', calc: true }
+  { k: 'full', t: 'Ф' },
+  { k: 'kare', t: 'К' },
+  { k: 'poker', t: 'Покер' },
+  { k: 'total', t: 'Итог школы', calc: true }
 ];
+
+const range = (from, to, step = 1) => {
+  const out = [];
+  for (let x = from; x <= to; x += step) out.push(x);
+  return out;
+};
+
+// Кратность проверяем только там, где она точно известна:
+// строки 1–6 — n × количество кубиков с номиналом n (от 0 до 5);
+// К — четыре одинаковых кубика (4 × номинал); Покер — пять одинаковых (5 × номинал).
+// Для П, 2П, Ф и «+»/«−» проверяется только максимум (и минимум у Ф).
+function allowedValues(k) {
+  if (/^u[1-6]$/.test(k)) {
+    const n = Number(k[1]);
+    return range(0, 5).map(i => n * i);
+  }
+  if (k === 'kare') return [0, ...range(4, 24, 4)];
+  if (k === 'poker') return [0, ...range(5, 30, 5)];
+  return null;
+}
+
+// Наибольшее значение строки.
+const LIMITS = { pair: 12, twoPair: 24, full: 30, kare: 24, poker: 30, plus: 30, minus: 30 };
+function limitOf(k) {
+  if (/^u[1-6]$/.test(k)) return 5 * Number(k[1]);
+  return LIMITS[k] ?? Infinity;
+}
+
+// Наименьшее ненулевое значение строки (0 всегда допустим — «не записано»).
+const MINIMUMS = { full: 5 };
+
+// Проверка значения. Возвращает текст ошибки или null.
+function checkValue(k, v) {
+  if (!Number.isInteger(v) || v < 0) return 'Нужно целое число, не меньше 0.';
+  const max = limitOf(k);
+  if (v > max) return `Здесь не больше ${max}.`;
+  const min = MINIMUMS[k] || 0;
+  if (v !== 0 && v < min) return `Здесь минимум ${min}.`;
+  const allowed = allowedValues(k);
+  if (allowed && !allowed.includes(v)) {
+    const list = allowed.filter(x => x > 0).join(', ');
+    return `Здесь нельзя записать ${v}. Допустимо: 0, ${list}.`;
+  }
+  return null;
+}
 
 let code = '';
 let state = null;
 
-function num(v) {
-  const n = Number(v);
-  return v === '' || v == null || isNaN(n) ? 0 : n;
+const cellKey = (school, k) => `s${school}_${k}`;
+
+function val(cells, school, k) {
+  const v = cells && cells[cellKey(school, k)];
+  return v == null ? null : Number(v);
 }
 
-function scores(cells) {
-  const c = cells || {};
-  const sumU = [1, 2, 3, 4, 5, 6].reduce((s, n) => s + num(c['u' + n]), 0);
+function schoolScore(cells, school) {
+  const sumU = [1, 2, 3, 4, 5, 6].reduce((t, n) => t + (val(cells, school, 'u' + n) || 0), 0);
   const bonus = sumU >= 60 ? 30 : 0;
-  const combos = COMBOS.reduce((s, k) => s + num(c[k]), 0);
-  return { sumU, bonus, total: sumU + bonus + num(c.plus) - num(c.minus) + combos };
+  const combos = COMBOS.reduce((t, k) => t + (val(cells, school, k) || 0), 0);
+  const total = sumU + bonus + (val(cells, school, 'plus') || 0) - (val(cells, school, 'minus') || 0) + combos;
+  return { sumU, bonus, total };
+}
+
+// Ячейка открыта, если все ячейки перед ней в порядке школы уже заполнены.
+function isOpen(cells, school, k) {
+  let seq = null;
+  if (school === 1) seq = SEQ;
+  if (school === 3) seq = [...SEQ].reverse();
+  if (!seq) return true;
+  const idx = seq.indexOf(k);
+  for (let i = 0; i < idx; i++) {
+    if (val(cells, school, seq[i]) == null) return false;
+  }
+  return true;
+}
+
+// Ячейку можно менять, если она открыта и либо за этот ход ещё ничего не записано,
+// либо это та самая ячейка, которую записали в этом ходу (исправление ошибки).
+function isEditable(room, playerIndex, school, k) {
+  if (!room || (room.turn || 0) !== playerIndex) return false;
+  const cells = room.players[playerIndex].cells;
+  if (!isOpen(cells, school, k)) return false;
+  if (!room.entered) return true;
+  return room.enteredCell === cellKey(school, k);
 }
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
+function ago(ms) {
+  const min = Math.round((Date.now() - ms) / 60000);
+  if (min < 1) return 'только что';
+  if (min < 60) return `${min} мин назад`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} ч назад`;
+  return `${Math.round(h / 24)} дн назад`;
+}
+
+let toastTimer;
+function toast(text) {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 5000);
+}
+
 function render() {
   const players = (state && state.players) || [];
   const turn = (state && state.turn) || 0;
-  let html = '<tr><th></th>' +
-    players.map((p, i) => `<th class="${i === turn ? 'turn' : ''}">${esc(p.name)}</th>`).join('') + '</tr>';
+
+  let html = '<tr><th></th>' + players.map((p, i) => {
+    const total = SCHOOLS.reduce((t, sc) => t + schoolScore(p.cells, sc.id).total, 0);
+    return `<th class="player ${i === turn ? 'turn' : ''}" colspan="3">${esc(p.name)} · ${total}</th>`;
+  }).join('') + '</tr>';
+
+  html += '<tr><th></th>' + players.map(() =>
+    SCHOOLS.map(sc => `<th class="school">${sc.title}<br>${sc.sub}</th>`).join('')
+  ).join('') + '</tr>';
 
   for (const r of ROWS) {
-    html += `<tr><td class="row-label">${esc(r.t)}</td>`;
+    html += `<tr><td class="label ${r.cls || ''}">${esc(r.t)}</td>`;
     players.forEach((p, i) => {
-      if (r.calc) {
-        const s = scores(p.cells);
-        const v = r.k === 'sumU' ? s.sumU : r.k === 'bonus' ? s.bonus : s.total;
-        html += `<td class="calc">${v}</td>`;
-      } else {
-        const v = p.cells && p.cells[r.k] != null ? p.cells[r.k] : '';
-        html += `<td><input type="number" data-p="${i}" data-k="${r.k}" value="${v}"></td>`;
-      }
+      SCHOOLS.forEach(sc => {
+        if (r.calc) {
+          const s = schoolScore(p.cells, sc.id);
+          if (r.k === 'upper') {
+            const bonusHtml = s.bonus ? ` <span class="bonus">+${s.bonus}</span>` : '';
+            html += `<td class="calc">${s.sumU}${bonusHtml}</td>`;
+          } else {
+            html += `<td class="calc">${s.total}</td>`;
+          }
+        } else {
+          const v = val(p.cells, sc.id, r.k);
+          const editable = state && isEditable(state, i, sc.id, r.k);
+          const max = limitOf(r.k);
+          const maxAttr = Number.isFinite(max) ? ` max="${max}"` : '';
+          html += `<td class="${r.cls || ''}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} data-p="${i}" data-s="${sc.id}" data-k="${r.k}"></td>`;
+        }
+      });
     });
     html += '</tr>';
   }
 
   document.getElementById('sheet').innerHTML = html;
-  document.getElementById('turnInfo').textContent =
-    players.length ? `Ходит: ${players[turn].name}` : 'Добавьте игроков';
+
+  let info = 'Добавьте игроков';
+  if (players.length) {
+    info = `Ходит: ${players[turn].name}`;
+    if (state.entered) info += ' · значение записано, можно исправить или передать ход';
+  }
+  document.getElementById('turnInfo').textContent = info;
 }
 
 function connect(c) {
   code = c;
   document.getElementById('join').hidden = true;
   document.getElementById('room').hidden = false;
-  document.getElementById('roomCode').textContent = code;
   history.replaceState(null, '', '#' + code);
 
   db.ref('rooms/' + code).on('value', snap => {
     state = snap.val();
     render();
-  }, err => alert('Нет доступа к базе: ' + err.message));
+  }, err => toast('Нет доступа к базе: ' + err.message));
 
   db.ref('.info/connected').on('value', s => {
-    document.getElementById('status').textContent = s.val() ? 'онлайн' : 'нет связи';
+    document.getElementById('status').textContent = s.val() ? '● онлайн' : '● нет связи';
   });
 }
+
+// Список активных комнат. Заодно удаляет комнаты без изменений дольше двух суток.
+function showRooms() {
+  db.ref('rooms').on('value', snap => {
+    const all = snap.val() || {};
+    const now = Date.now();
+    const active = [];
+    for (const [id, room] of Object.entries(all)) {
+      const updated = room && room.updatedAt;
+      if (!updated || now - updated > ROOM_TTL_MS) {
+        db.ref('rooms/' + id).remove();
+        continue;
+      }
+      active.push({ id, room, updated });
+    }
+    active.sort((a, b) => b.updated - a.updated);
+
+    const list = document.getElementById('roomList');
+    list.innerHTML = active.map(({ id, room, updated }) => {
+      const names = ((room && room.players) || []).map(p => esc(p.name)).join(', ') || 'пока без игроков';
+      return `<button class="room-item" data-room="${esc(id)}"><span><b>${esc(id)}</b> · ${names}</span><small>${ago(updated)}</small></button>`;
+    }).join('');
+    document.getElementById('roomsTitle').textContent =
+      active.length ? 'Активные комнаты' : 'Активных комнат нет';
+  });
+}
+
+document.getElementById('roomList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-room]');
+  if (btn) connect(btn.dataset.room);
+});
 
 document.getElementById('joinBtn').onclick = () => {
   const c = document.getElementById('code').value.trim();
@@ -159,7 +383,9 @@ document.getElementById('joinBtn').onclick = () => {
 };
 
 document.getElementById('newBtn').onclick = () => {
-  connect(String(Math.floor(1000 + Math.random() * 9000)));
+  const id = String(Math.floor(1000 + Math.random() * 9000));
+  connect(id);
+  db.ref(`rooms/${id}/updatedAt`).set(Date.now());
 };
 
 document.getElementById('addBtn').onclick = () => {
@@ -171,46 +397,59 @@ document.getElementById('addBtn').onclick = () => {
     list.push({ name, cells: {} });
     return list;
   });
+  db.ref(`rooms/${code}/updatedAt`).set(Date.now());
   input.value = '';
 };
 
-document.getElementById('nextBtn').onclick = () => {
+// Передача хода: следующий игрок, запись этого хода сбрасывается.
+document.getElementById('passBtn').onclick = () => {
   db.ref(`rooms/${code}`).transaction(room => {
     if (!room || !room.players || !room.players.length) return room;
     room.turn = ((room.turn || 0) + 1) % room.players.length;
+    room.entered = false;
+    room.enteredCell = null;
+    room.updatedAt = Date.now();
     return room;
   });
 };
 
+// Одно значение за ход. Запись не передаёт ход: его можно исправить и передать вручную.
+function writeCell(playerIndex, school, k, v) {
+  db.ref(`rooms/${code}`).transaction(room => {
+    if (!room || !room.players || !room.players.length) return room;
+    if (!isEditable(room, playerIndex, school, k)) return;
+    if (checkValue(k, v)) return;
+    const player = room.players[playerIndex];
+    player.cells = player.cells || {};
+    player.cells[cellKey(school, k)] = v;
+    room.entered = true;
+    room.enteredCell = cellKey(school, k);
+    room.updatedAt = Date.now();
+    return room;
+  }, (err, committed) => {
+    if (err || !committed) {
+      toast('Сейчас ход другого игрока или ячейка пока закрыта.');
+      render();
+    }
+  });
+}
+
 document.getElementById('sheet').addEventListener('change', e => {
   const el = e.target;
   if (!el.matches('input[data-k]')) return;
-  const val = el.value === '' ? null : Number(el.value);
-  db.ref(`rooms/${code}/players/${el.dataset.p}/cells/${el.dataset.k}`).set(val);
+  const k = el.dataset.k;
+  if (el.value === '') { render(); return; }
+  const v = Number(el.value);
+  const error = checkValue(k, v);
+  if (error) {
+    toast(error);
+    render();
+    return;
+  }
+  writeCell(Number(el.dataset.p), Number(el.dataset.s), k, v);
 });
 
-// Определяет комбинацию по пяти кубикам.
-function detect(d) {
-  const counts = [0, 0, 0, 0, 0, 0, 0];
-  d.forEach(x => counts[x]++);
-  const groups = counts.filter(x => x > 0).sort((a, b) => b - a);
-  const sum = d.reduce((a, b) => a + b, 0);
-  let name = 'Ничего';
-  if (groups[0] === 5) name = 'Покер';
-  else if (groups[0] === 4) name = 'Каре';
-  else if (groups[0] === 3 && groups[1] === 2) name = 'Фулл-хаус';
-  else if (groups[0] === 3) name = 'Три одинаковых';
-  else if (groups[0] === 2 && groups[1] === 2) name = 'Две пары';
-  else if (groups[0] === 2) name = 'Пара';
-  return `${name}, сумма ${sum}`;
-}
-
-document.getElementById('checkBtn').onclick = () => {
-  const d = [...document.querySelectorAll('.d')].map(i => Number(i.value)).filter(n => n >= 1 && n <= 6);
-  document.getElementById('result').textContent =
-    d.length === 5 ? detect(d) : 'Введите все пять кубиков (значения 1–6)';
-};
-
+showRooms();
 if (location.hash.length > 1) connect(location.hash.slice(1));
 </script>
 </body>
