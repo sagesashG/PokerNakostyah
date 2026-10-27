@@ -18,8 +18,62 @@
     --minus-bg: rgba(248, 113, 113, 0.22);
     --minus-fg: #fecaca;
     --btn: linear-gradient(135deg, #7c3aed, #db2777);
+    --page: radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.45), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(236, 72, 153, 0.35), transparent 60%),
+      linear-gradient(160deg, #0f172a, #1e1b4b 60%, #172554);
+    --table: rgba(15, 23, 42, 0.35);
+  }
+  /* Тетрадный лист: линейки и поле, как в тетради в клетку. */
+  :root[data-theme="notebook"] {
+    --fg: #1d2b4a;
+    --muted: #5b6b8c;
+    --card: rgba(255, 255, 255, 0.88);
+    --line: #a9c7e6;
+    --head: #eef4fb;
+    --turn: #ffe98a;
+    --calc: #fff4c2;
+    --plus-bg: #cfe4ff;
+    --plus-fg: #1b4f8a;
+    --minus-bg: #ffd6d6;
+    --minus-fg: #8a2b2b;
+    --table: rgba(255, 255, 255, 0.92);
+    --btn: linear-gradient(135deg, #3b6fd8, #2b59b8);
+    --page: linear-gradient(to right, transparent 56px, #f08080 56px 58px, transparent 58px),
+      repeating-linear-gradient(to bottom, transparent 0 27px, #9ec5e8 27px 28px),
+      #fffdf5;
+  }
+  /* Трава: зелёный газон и светлые карточки. */
+  :root[data-theme="grass"] {
+    --fg: #143d12;
+    --muted: #2f5a2a;
+    --card: rgba(255, 255, 255, 0.55);
+    --line: rgba(20, 61, 18, 0.25);
+    --head: rgba(255, 255, 255, 0.6);
+    --turn: #ffd54a;
+    --calc: rgba(255, 236, 150, 0.8);
+    --plus-bg: rgba(90, 160, 255, 0.45);
+    --plus-fg: #0d2f63;
+    --minus-bg: rgba(255, 120, 120, 0.45);
+    --minus-fg: #5a0f0f;
+    --table: rgba(255, 255, 255, 0.55);
+    --btn: linear-gradient(135deg, #2f8f3a, #6bb83b);
+    --page: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.14) 0 2px, transparent 3px) 0 0 / 22px 22px,
+      radial-gradient(circle at 70% 30%, rgba(20, 61, 18, 0.12) 0 2px, transparent 3px) 0 0 / 27px 27px,
+      linear-gradient(180deg, #8fd16b 0%, #4f9e3a 60%, #2f7a2a 100%);
   }
   [hidden] { display: none !important; }
+  .theme-pick {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 5;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: var(--fg);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -28,10 +82,7 @@
     color: var(--fg);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 17px;
-    background:
-      radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.45), transparent 60%),
-      radial-gradient(900px 500px at 110% 10%, rgba(236, 72, 153, 0.35), transparent 60%),
-      linear-gradient(160deg, #0f172a, #1e1b4b 60%, #172554);
+    background: var(--page);
     background-attachment: fixed;
   }
   .card {
@@ -49,6 +100,9 @@
   button.ghost { background: rgba(255, 255, 255, 0.12); }
   #status, #whoami { color: var(--muted); font-size: 14px; }
   .title { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+  .place { display: flex; justify-content: space-between; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line); font-size: 18px; }
+  .place:last-child { border-bottom: none; }
+  .place.first { font-size: 24px; font-weight: 800; }
   .choices { display: grid; gap: 8px; margin-bottom: 10px; }
   .choice {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -63,7 +117,7 @@
     border-collapse: separate;
     border-spacing: 0;
     min-width: 100%;
-    background: rgba(15, 23, 42, 0.35);
+    background: var(--table);
     border-radius: 18px;
     overflow: hidden;
   }
@@ -74,9 +128,21 @@
   th.turn { background: var(--turn); }
   td.label { text-align: left; white-space: nowrap; font-weight: 600; min-width: 130px; }
   td.plus-row { background: var(--plus-bg); color: var(--plus-fg); }
+  td.good { box-shadow: inset 0 0 0 2px #4ade80; font-weight: 800; }
   td.minus-row { background: var(--minus-bg); color: var(--minus-fg); }
   td.calc { background: var(--calc); font-weight: 800; white-space: nowrap; }
-  td.calc .bonus { color: #fde68a; font-weight: 700; }
+  /* Красный овал, нарисованный ручкой: незамкнутый, с перехлёстом у начала. */
+  td.calc .bonus { position: relative; display: inline-block; padding: 0 12px; color: #fde68a; }
+  td.calc .bonus svg {
+    position: absolute;
+    left: -14px;
+    top: -8px;
+    width: calc(100% + 28px);
+    height: calc(100% + 16px);
+    overflow: visible;
+    pointer-events: none;
+  }
+  td.calc .bonus path { fill: none; stroke: #e11d48; stroke-width: 2.5; stroke-linecap: round; }
   td input {
     width: 56px;
     text-align: center;
@@ -107,6 +173,12 @@
 </head>
 <body>
 
+<select id="themeSel" class="theme-pick">
+  <option value="main">Основная</option>
+  <option value="notebook">Тетрадь</option>
+  <option value="grass">Трава</option>
+</select>
+
 <div id="join" class="card">
   <div class="row">
     <input id="code" inputmode="numeric" placeholder="Код комнаты" maxlength="6">
@@ -136,6 +208,7 @@
     <button id="viewBtn" class="ghost">Это телевизор — показать всех</button>
   </div>
 
+  <div class="card" id="results" hidden></div>
   <div class="card" id="turnInfo" style="font-size: 20px; font-weight: 700"></div>
   <div class="scroll"><table id="sheet"></table></div>
 </div>
@@ -174,7 +247,7 @@ const SEQ = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'plus', 'minus', 'pair', 'twoPa
 // Строки таблицы в порядке отображения.
 const ROWS = [
   ...[1, 2, 3, 4, 5, 6].map(n => ({ k: 'u' + n, t: String(n) })),
-  { k: 'upper', t: 'Сумма 1–6 + бонус', calc: true },
+  { k: 'upper', t: 'Сумма', calc: true },
   { k: 'plus', t: '+', cls: 'plus-row' },
   { k: 'minus', t: '−', cls: 'minus-row' },
   { k: 'pair', t: 'П' },
@@ -213,7 +286,8 @@ function limitOf(k) {
 }
 
 // Наименьшее ненулевое значение строки (0 всегда допустим — «не записано»).
-const MINIMUMS = { full: 5 };
+// «+» и «−» — сумма всех пяти кубиков, поэтому минимум 5 и максимум 30.
+const MINIMUMS = { full: 5, plus: 5, minus: 5 };
 
 // Проверка значения. Возвращает текст ошибки или null.
 function checkValue(k, v) {
@@ -311,11 +385,34 @@ function toast(text) {
   toastTimer = setTimeout(() => { el.hidden = true; }, 5000);
 }
 
+// Итоги появляются, когда у всех игроков заполнены все 39 ячеек. Одинаковые очки делят место.
+function renderResults(players) {
+  const box = document.getElementById('results');
+  const done = players.length > 0 && players.every(p => Object.keys(p.cells || {}).length === 39);
+  box.hidden = !done;
+  if (!done) return;
+  const rows = players
+    .map(p => ({ name: p.name, total: SCHOOLS.reduce((t, sc) => t + schoolScore(p.cells, sc.id).total, 0) }))
+    .sort((a, b) => b.total - a.total);
+  const medals = ['🥇', '🥈', '🥉'];
+  let place = 0;
+  let prev = null;
+  box.innerHTML = '<div class="title">Итоги игры</div>' + rows.map((r, i) => {
+    if (r.total !== prev) { place = i + 1; prev = r.total; }
+    const mark = medals[place - 1] || '';
+    return `<div class="place ${place === 1 ? 'first' : ''}"><span>${mark} ${place} место · ${esc(r.name)}</span><b>${r.total}</b></div>`;
+  }).join('') + `<div class="row" style="margin-top: 14px">
+    <button data-act="restart">Начать заново</button>
+    <button class="ghost" data-act="close">Закрыть комнату</button>
+  </div>`;
+}
+
 function render() {
   const players = (state && state.players) || [];
   const turn = (state && state.turn) || 0;
   const pick = document.getElementById('pick');
   const sheet = document.getElementById('sheet');
+  renderResults(players);
 
   // Экран выбора: кто вы или телевизор.
   pick.hidden = !!mode;
@@ -357,8 +454,10 @@ function render() {
         if (r.calc) {
           const s = schoolScore(p.cells, sc.id);
           if (r.k === 'upper') {
-            const bonusHtml = s.bonus ? ` <span class="bonus">+${s.bonus}</span>` : '';
-            html += `<td class="calc">${s.sumU}${bonusHtml}</td>`;
+            // При бонусе показываем сумму с бонусом сразу, например 99, и обводим её.
+            html += s.bonus
+              ? `<td class="calc"><span class="bonus">${s.sumU + s.bonus}<svg viewBox="0 0 100 50" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M72 6 C40 2 8 8 6 26 C4 44 40 50 72 46 C96 42 98 22 80 12 C72 8 62 8 54 11"/></svg></span></td>`
+              : `<td class="calc">${s.sumU}</td>`;
           } else {
             html += `<td class="calc">${s.total}</td>`;
           }
@@ -368,7 +467,10 @@ function render() {
           const editable = mode.type === 'player' && isEditable(state, i, sc.id, r.k);
           const max = limitOf(r.k);
           const maxAttr = Number.isFinite(max) ? ` max="${max}"` : '';
-          html += `<td class="${r.cls || ''}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} data-p="${i}" data-s="${sc.id}" data-k="${r.k}"></td>`;
+          const cell = `data-p="${i}" data-s="${sc.id}" data-k="${r.k}"`;
+          // «Хорошее» значение: в «+» больше 22, в «−» меньше 10.
+          const good = v != null && ((r.k === 'plus' && v > 22) || (r.k === 'minus' && v < 10));
+          html += `<td class="${r.cls || ''} ${good ? 'good' : ''}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} ${cell}></td>`;
         }
       });
     });
@@ -520,6 +622,55 @@ document.getElementById('sheet').addEventListener('change', e => {
     return;
   }
   writeCell(Number(el.dataset.p), Number(el.dataset.s), k, v);
+});
+
+// Тема оформления запоминается на устройстве.
+const themeSel = document.getElementById('themeSel');
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeSel.value = t;
+}
+let savedTheme = 'main';
+try { savedTheme = localStorage.getItem('kosti.theme') || 'main'; } catch (e) { /* без хранилища тема не запомнится */ }
+applyTheme(savedTheme);
+themeSel.onchange = () => {
+  applyTheme(themeSel.value);
+  try { localStorage.setItem('kosti.theme', themeSel.value); } catch (e) { /* без хранилища тема не запомнится */ }
+};
+
+// Кнопки в итогах: начать заново или закрыть комнату.
+function leaveRoom() {
+  db.ref('rooms/' + code).off();
+  code = '';
+  state = null;
+  mode = null;
+  history.replaceState(null, '', location.pathname);
+  document.getElementById('room').hidden = true;
+  document.getElementById('join').hidden = false;
+  document.getElementById('code').value = '';
+}
+
+document.getElementById('results').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  if (btn.dataset.act === 'restart') {
+    if (!confirm('Начать игру заново? Все записанные значения будут стёрты, игроки останутся.')) return;
+    db.ref(`rooms/${code}`).transaction(room => {
+      if (!room || !room.players) return room;
+      room.players.forEach(p => { p.cells = {}; });
+      room.turn = 0;
+      room.entered = false;
+      room.enteredCell = null;
+      room.updatedAt = Date.now();
+      return room;
+    });
+  }
+  if (btn.dataset.act === 'close') {
+    if (!confirm('Закрыть комнату? Все данные комнаты будут удалены.')) return;
+    db.ref(`rooms/${code}`).remove();
+    saveMode(code, null);
+    leaveRoom();
+  }
 });
 
 showRooms();
