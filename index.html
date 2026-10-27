@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кости: учёт</title>
+<style>
+  :root { --bg:#f5f5f0; --fg:#222; --line:#aaa; --head:#e6e6df; --calc:#fff3b0; --turn:#cfe3ff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1c1c1c; --fg:#eee; --line:#555; --head:#2c2c2c; --calc:#5a5118; --turn:#24406a; }
+  }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; font-size:18px; }
+  h1 { font-size:24px; margin:0 0 12px; }
+  .panel { margin-bottom:16px; }
+  input, button { font:inherit; padding:8px 12px; }
+  table { border-collapse:collapse; width:100%; }
+  th, td { border:1px solid var(--line); padding:6px 8px; text-align:center; }
+  th { background:var(--head); }
+  th.turn { background:var(--turn); }
+  td.calc { background:var(--calc); font-weight:bold; }
+  td.row-label { text-align:left; white-space:nowrap; }
+  td input { width:70px; text-align:center; font:inherit; background:transparent; color:var(--fg); border:none; }
+  .dice input { width:56px; text-align:center; }
+  #status { color:#888; font-size:14px; }
+</style>
+</head>
+<body>
+<h1>Кости: учёт игры</h1>
+
+<div id="join" class="panel">
+  <input id="code" inputmode="numeric" placeholder="Код комнаты" maxlength="6">
+  <button id="joinBtn">Войти</button>
+  <button id="newBtn">Новая комната</button>
+</div>
+
+<div id="room" hidden>
+  <div class="panel">
+    Комната: <b id="roomCode"></b> <span id="status"></span>
+    <div style="margin-top:8px">
+      <input id="newName" placeholder="Имя игрока">
+      <button id="addBtn">Добавить игрока</button>
+      <button id="nextBtn">Передать ход</button>
+    </div>
+  </div>
+  <div class="panel" id="turnInfo"></div>
+  <div style="overflow-x:auto"><table id="sheet"></table></div>
+  <div class="panel">
+    <b>Проверка кубиков</b>
+    <div class="dice" style="margin-top:8px">
+      <input type="number" min="1" max="6" class="d">
+      <input type="number" min="1" max="6" class="d">
+      <input type="number" min="1" max="6" class="d">
+      <input type="number" min="1" max="6" class="d">
+      <input type="number" min="1" max="6" class="d">
+      <button id="checkBtn">Определить</button>
+    </div>
+    <div id="result" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-database-compat.js"></script>
+<script>
+// Вставьте свои данные из Firebase (Настройки проекта → Ваши приложения → Конфигурация).
+const firebaseConfig = {
+  apiKey: 'AIzaSyCLBAG_CUE-efrhEJpKRDO2e2mzkeJCnB0',
+  authDomain: 'pokernakostyah.firebaseapp.com',
+  databaseURL: 'https://pokernakostyah-default-rtdb.firebaseio.com',
+  projectId: 'pokernakostyah',
+  storageBucket: 'pokernakostyah.firebasestorage.app',
+  messagingSenderId: '5093102343',
+  appId: '1:5093102343:web:bfa971c72db88110066ba2'
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Строки таблицы, как в гугл-таблице.
+const COMBOS = ['pair', 'twoPair', 'full', 'kare', 'poker'];
+const ROWS = [
+  ...[1, 2, 3, 4, 5, 6].map(n => ({ k: 'u' + n, t: String(n) })),
+  { k: 'sumU', t: 'Сумма 1–6', calc: true },
+  { k: 'bonus', t: 'Бонус (от 60: +30)', calc: true },
+  { k: 'plus', t: '+' },
+  { k: 'minus', t: '−' },
+  { k: 'pair', t: 'П' },
+  { k: 'twoPair', t: '2П' },
+  { k: 'full', t: 'F' },
+  { k: 'kare', t: 'K' },
+  { k: 'poker', t: 'P' },
+  { k: 'total', t: 'Итог', calc: true }
+];
+
+let code = '';
+let state = null;
+
+function num(v) {
+  const n = Number(v);
+  return v === '' || v == null || isNaN(n) ? 0 : n;
+}
+
+function scores(cells) {
+  const c = cells || {};
+  const sumU = [1, 2, 3, 4, 5, 6].reduce((s, n) => s + num(c['u' + n]), 0);
+  const bonus = sumU >= 60 ? 30 : 0;
+  const combos = COMBOS.reduce((s, k) => s + num(c[k]), 0);
+  return { sumU, bonus, total: sumU + bonus + num(c.plus) - num(c.minus) + combos };
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function render() {
+  const players = (state && state.players) || [];
+  const turn = (state && state.turn) || 0;
+  let html = '<tr><th></th>' +
+    players.map((p, i) => `<th class="${i === turn ? 'turn' : ''}">${esc(p.name)}</th>`).join('') + '</tr>';
+
+  for (const r of ROWS) {
+    html += `<tr><td class="row-label">${esc(r.t)}</td>`;
+    players.forEach((p, i) => {
+      if (r.calc) {
+        const s = scores(p.cells);
+        const v = r.k === 'sumU' ? s.sumU : r.k === 'bonus' ? s.bonus : s.total;
+        html += `<td class="calc">${v}</td>`;
+      } else {
+        const v = p.cells && p.cells[r.k] != null ? p.cells[r.k] : '';
+        html += `<td><input type="number" data-p="${i}" data-k="${r.k}" value="${v}"></td>`;
+      }
+    });
+    html += '</tr>';
+  }
+
+  document.getElementById('sheet').innerHTML = html;
+  document.getElementById('turnInfo').textContent =
+    players.length ? `Ходит: ${players[turn].name}` : 'Добавьте игроков';
+}
+
+function connect(c) {
+  code = c;
+  document.getElementById('join').hidden = true;
+  document.getElementById('room').hidden = false;
+  document.getElementById('roomCode').textContent = code;
+  history.replaceState(null, '', '#' + code);
+
+  db.ref('rooms/' + code).on('value', snap => {
+    state = snap.val();
+    render();
+  }, err => alert('Нет доступа к базе: ' + err.message));
+
+  db.ref('.info/connected').on('value', s => {
+    document.getElementById('status').textContent = s.val() ? 'онлайн' : 'нет связи';
+  });
+}
+
+document.getElementById('joinBtn').onclick = () => {
+  const c = document.getElementById('code').value.trim();
+  if (c) connect(c);
+};
+
+document.getElementById('newBtn').onclick = () => {
+  connect(String(Math.floor(1000 + Math.random() * 9000)));
+};
+
+document.getElementById('addBtn').onclick = () => {
+  const input = document.getElementById('newName');
+  const name = input.value.trim();
+  if (!name) return;
+  db.ref(`rooms/${code}/players`).transaction(list => {
+    list = list || [];
+    list.push({ name, cells: {} });
+    return list;
+  });
+  input.value = '';
+};
+
+document.getElementById('nextBtn').onclick = () => {
+  db.ref(`rooms/${code}`).transaction(room => {
+    if (!room || !room.players || !room.players.length) return room;
+    room.turn = ((room.turn || 0) + 1) % room.players.length;
+    return room;
+  });
+};
+
+document.getElementById('sheet').addEventListener('change', e => {
+  const el = e.target;
+  if (!el.matches('input[data-k]')) return;
+  const val = el.value === '' ? null : Number(el.value);
+  db.ref(`rooms/${code}/players/${el.dataset.p}/cells/${el.dataset.k}`).set(val);
+});
+
+// Определяет комбинацию по пяти кубикам.
+function detect(d) {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  d.forEach(x => counts[x]++);
+  const groups = counts.filter(x => x > 0).sort((a, b) => b - a);
+  const sum = d.reduce((a, b) => a + b, 0);
+  let name = 'Ничего';
+  if (groups[0] === 5) name = 'Покер';
+  else if (groups[0] === 4) name = 'Каре';
+  else if (groups[0] === 3 && groups[1] === 2) name = 'Фулл-хаус';
+  else if (groups[0] === 3) name = 'Три одинаковых';
+  else if (groups[0] === 2 && groups[1] === 2) name = 'Две пары';
+  else if (groups[0] === 2) name = 'Пара';
+  return `${name}, сумма ${sum}`;
+}
+
+document.getElementById('checkBtn').onclick = () => {
+  const d = [...document.querySelectorAll('.d')].map(i => Number(i.value)).filter(n => n >= 1 && n <= 6);
+  document.getElementById('result').textContent =
+    d.length === 5 ? detect(d) : 'Введите все пять кубиков (значения 1–6)';
+};
+
+if (location.hash.length > 1) connect(location.hash.slice(1));
+</script>
+</body>
+</html>
