@@ -47,17 +47,17 @@
   input:not([type=number]) { background: rgba(255, 255, 255, 0.08); color: var(--fg); }
   button { background: var(--btn); color: #fff; border: none; font-weight: 600; cursor: pointer; }
   button.ghost { background: rgba(255, 255, 255, 0.12); }
-  #status { color: var(--muted); font-size: 14px; }
-  .rooms { margin-top: 12px; display: grid; gap: 8px; }
-  .rooms .title { color: var(--muted); font-size: 14px; }
-  .room-item {
+  #status, #whoami { color: var(--muted); font-size: 14px; }
+  .title { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+  .choices { display: grid; gap: 8px; margin-bottom: 10px; }
+  .choice {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
     width: 100%; text-align: left;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--line);
     color: var(--fg);
   }
-  .room-item small { color: var(--muted); font-weight: 400; }
+  .choice small { color: var(--muted); font-weight: 400; }
   .scroll { overflow-x: auto; border-radius: 18px; }
   table {
     border-collapse: separate;
@@ -113,19 +113,29 @@
     <button id="joinBtn">Войти</button>
     <button id="newBtn" class="ghost">Новая комната</button>
   </div>
-  <div class="rooms">
+  <div style="margin-top: 14px">
     <div class="title" id="roomsTitle">Активные комнаты загружаются…</div>
-    <div id="roomList"></div>
+    <div id="roomList" class="choices"></div>
   </div>
 </div>
 
 <div id="room" hidden>
   <div class="card row">
+    <span id="status"></span>
+    <span id="whoami"></span>
+    <span style="flex: 1"></span>
     <input id="newName" placeholder="Имя игрока">
     <button id="addBtn">Добавить</button>
     <button id="passBtn" class="ghost">Передать ход</button>
-    <span id="status"></span>
+    <button id="switchBtn" class="ghost">Сменить</button>
   </div>
+
+  <div class="card" id="pick" hidden>
+    <div class="title">Кто вы в этой комнате?</div>
+    <div id="pickList" class="choices"></div>
+    <button id="viewBtn" class="ghost">Это телевизор — показать всех</button>
+  </div>
+
   <div class="card" id="turnInfo" style="font-size: 20px; font-weight: 700"></div>
   <div class="scroll"><table id="sheet"></table></div>
 </div>
@@ -222,6 +232,8 @@ function checkValue(k, v) {
 
 let code = '';
 let state = null;
+// Режим устройства в комнате: { type: 'player', name } — телефон игрока, { type: 'view' } — телевизор, null — ещё не выбран.
+let mode = null;
 
 const cellKey = (school, k) => `s${school}_${k}`;
 
@@ -274,6 +286,22 @@ function ago(ms) {
   return `${Math.round(h / 24)} дн назад`;
 }
 
+// Режим запоминается на этом устройстве для каждой комнаты.
+function loadMode(c) {
+  try { return JSON.parse(localStorage.getItem('kosti.mode.' + c)); } catch (e) { return null; }
+}
+function saveMode(c, m) {
+  try {
+    if (m) localStorage.setItem('kosti.mode.' + c, JSON.stringify(m));
+    else localStorage.removeItem('kosti.mode.' + c);
+  } catch (e) { /* без хранилища просто не запомним режим */ }
+}
+function setMode(m) {
+  mode = m;
+  saveMode(code, m);
+  render();
+}
+
 let toastTimer;
 function toast(text) {
   const el = document.getElementById('toast');
@@ -286,19 +314,45 @@ function toast(text) {
 function render() {
   const players = (state && state.players) || [];
   const turn = (state && state.turn) || 0;
+  const pick = document.getElementById('pick');
+  const sheet = document.getElementById('sheet');
 
-  let html = '<tr><th></th>' + players.map((p, i) => {
+  // Экран выбора: кто вы или телевизор.
+  pick.hidden = !!mode;
+  document.getElementById('passBtn').hidden = !(mode && mode.type === 'player');
+  document.getElementById('whoami').textContent =
+    !mode ? '' : mode.type === 'player' ? `Вы: ${mode.name}` : 'Режим телевизора: все игроки';
+
+  if (!mode) {
+    document.getElementById('pickList').innerHTML = players.map(p =>
+      `<button class="choice" data-name="${esc(p.name)}">Я — ${esc(p.name)}</button>`
+    ).join('') || '<div class="title">Игроков пока нет. Добавьте их ниже и выберите себя.</div>';
+    sheet.innerHTML = '';
+    document.getElementById('turnInfo').textContent = '';
+    return;
+  }
+
+  // Телефон показывает только колонку игрока, телевизор — всех.
+  let visible = players.map((_, i) => i);
+  if (mode.type === 'player') {
+    const idx = players.findIndex(p => p.name === mode.name);
+    visible = idx >= 0 ? [idx] : [];
+  }
+
+  let html = '<tr><th></th>' + visible.map(i => {
+    const p = players[i];
     const total = SCHOOLS.reduce((t, sc) => t + schoolScore(p.cells, sc.id).total, 0);
     return `<th class="player ${i === turn ? 'turn' : ''}" colspan="3">${esc(p.name)} · ${total}</th>`;
   }).join('') + '</tr>';
 
-  html += '<tr><th></th>' + players.map(() =>
+  html += '<tr><th></th>' + visible.map(() =>
     SCHOOLS.map(sc => `<th class="school">${sc.title}<br>${sc.sub}</th>`).join('')
   ).join('') + '</tr>';
 
   for (const r of ROWS) {
     html += `<tr><td class="label ${r.cls || ''}">${esc(r.t)}</td>`;
-    players.forEach((p, i) => {
+    visible.forEach(i => {
+      const p = players[i];
       SCHOOLS.forEach(sc => {
         if (r.calc) {
           const s = schoolScore(p.cells, sc.id);
@@ -310,7 +364,8 @@ function render() {
           }
         } else {
           const v = val(p.cells, sc.id, r.k);
-          const editable = state && isEditable(state, i, sc.id, r.k);
+          // Вносить может только игрок, чей сейчас ход, и только на своём телефоне.
+          const editable = mode.type === 'player' && isEditable(state, i, sc.id, r.k);
           const max = limitOf(r.k);
           const maxAttr = Number.isFinite(max) ? ` max="${max}"` : '';
           html += `<td class="${r.cls || ''}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} data-p="${i}" data-s="${sc.id}" data-k="${r.k}"></td>`;
@@ -320,12 +375,14 @@ function render() {
     html += '</tr>';
   }
 
-  document.getElementById('sheet').innerHTML = html;
+  sheet.innerHTML = html;
 
-  let info = 'Добавьте игроков';
-  if (players.length) {
-    info = `Ходит: ${players[turn].name}`;
-    if (state.entered) info += ' · значение записано, можно исправить или передать ход';
+  let info = players.length ? `Ходит: ${players[turn].name}` : 'Добавьте игроков';
+  if (mode.type === 'player' && state && state.entered) {
+    info += ' · значение записано, можно исправить или передать ход';
+  }
+  if (mode.type === 'player' && visible.length === 0) {
+    info = `Игрока «${mode.name}» нет в комнате. Нажмите «Сменить».`;
   }
   document.getElementById('turnInfo').textContent = info;
 }
@@ -335,6 +392,7 @@ function connect(c) {
   document.getElementById('join').hidden = true;
   document.getElementById('room').hidden = false;
   history.replaceState(null, '', '#' + code);
+  mode = loadMode(code);
 
   db.ref('rooms/' + code).on('value', snap => {
     state = snap.val();
@@ -344,6 +402,8 @@ function connect(c) {
   db.ref('.info/connected').on('value', s => {
     document.getElementById('status').textContent = s.val() ? '● онлайн' : '● нет связи';
   });
+
+  render();
 }
 
 // Список активных комнат. Заодно удаляет комнаты без изменений дольше двух суток.
@@ -362,10 +422,9 @@ function showRooms() {
     }
     active.sort((a, b) => b.updated - a.updated);
 
-    const list = document.getElementById('roomList');
-    list.innerHTML = active.map(({ id, room, updated }) => {
+    document.getElementById('roomList').innerHTML = active.map(({ id, room, updated }) => {
       const names = ((room && room.players) || []).map(p => esc(p.name)).join(', ') || 'пока без игроков';
-      return `<button class="room-item" data-room="${esc(id)}"><span><b>${esc(id)}</b> · ${names}</span><small>${ago(updated)}</small></button>`;
+      return `<button class="choice" data-room="${esc(id)}"><span><b>${esc(id)}</b> · ${names}</span><small>${ago(updated)}</small></button>`;
     }).join('');
     document.getElementById('roomsTitle').textContent =
       active.length ? 'Активные комнаты' : 'Активных комнат нет';
@@ -376,6 +435,14 @@ document.getElementById('roomList').addEventListener('click', e => {
   const btn = e.target.closest('button[data-room]');
   if (btn) connect(btn.dataset.room);
 });
+
+document.getElementById('pickList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-name]');
+  if (btn) setMode({ type: 'player', name: btn.dataset.name });
+});
+
+document.getElementById('viewBtn').onclick = () => setMode({ type: 'view' });
+document.getElementById('switchBtn').onclick = () => setMode(null);
 
 document.getElementById('joinBtn').onclick = () => {
   const c = document.getElementById('code').value.trim();
@@ -388,12 +455,18 @@ document.getElementById('newBtn').onclick = () => {
   db.ref(`rooms/${id}/updatedAt`).set(Date.now());
 };
 
+// Имена уникальны: по имени телефон находит свою колонку.
 document.getElementById('addBtn').onclick = () => {
   const input = document.getElementById('newName');
   const name = input.value.trim();
   if (!name) return;
+  if (state && (state.players || []).some(p => p.name === name)) {
+    toast('Игрок с таким именем уже есть.');
+    return;
+  }
   db.ref(`rooms/${code}/players`).transaction(list => {
     list = list || [];
+    if (list.some(p => p.name === name)) return;
     list.push({ name, cells: {} });
     return list;
   });
