@@ -232,6 +232,13 @@
     animation-fill-mode: forwards;
   }
   @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+  /* Телевизор: всё лишнее убрано, таблица масштабируется под экран целиком (см. fitTv). */
+  body.tv { padding: 8px; }
+  body.tv .add-box, body.tv #turnInfo { display: none; }
+  body.tv .theme-pick { position: fixed; right: 8px; bottom: 8px; margin: 0; z-index: 5; opacity: 0.6; }
+  body.tv #room > .card:first-child { padding: 6px 12px; margin-bottom: 8px; }
+  body.tv .scroll { overflow: hidden; margin: 0 auto; }
+  body.tv #sheet { min-width: 0; transform-origin: 0 0; }
   @media (max-width: 480px) {
     body { font-size: 16px; }
     td.label { padding-left: 6px; }
@@ -641,6 +648,7 @@ function render() {
     ).join('') || '<div class="title">Игроков пока нет. Добавьте их ниже и выберите себя.</div>';
     sheet.innerHTML = '';
     document.getElementById('turnInfo').textContent = '';
+    fitTv();
     return;
   }
 
@@ -707,7 +715,30 @@ function render() {
     info = `Игрока «${mode.name}» нет в комнате. Нажмите «Сменить».`;
   }
   document.getElementById('turnInfo').textContent = info;
+  fitTv();
 }
+
+// На телевизоре таблица должна помещаться в экран целиком: при многих игроках уменьшаем,
+// при немногих увеличиваем (не больше чем вдвое), чтобы читалось издалека.
+function fitTv() {
+  const sheet = document.getElementById('sheet');
+  const box = sheet.parentElement;
+  const tv = !!mode && mode.type === 'view' && !!code;
+  document.body.classList.toggle('tv', tv);
+  sheet.style.transform = '';
+  box.style.width = box.style.height = '';
+  if (!tv || !sheet.rows.length) return;
+  const w = sheet.offsetWidth;
+  const h = sheet.offsetHeight;
+  const pad = 8;
+  const availW = document.documentElement.clientWidth - 2 * pad;
+  const availH = window.innerHeight - box.getBoundingClientRect().top - window.scrollY - pad;
+  const s = Math.min(availW / w, availH / h, 2);
+  sheet.style.transform = `scale(${s})`;
+  box.style.width = w * s + 'px';
+  box.style.height = h * s + 'px';
+}
+window.addEventListener('resize', fitTv);
 
 function connect(c) {
   code = c;
@@ -951,6 +982,7 @@ function leaveRoom() {
   document.getElementById('floatPass').hidden = true;
   document.getElementById('join').hidden = false;
   document.getElementById('code').value = '';
+  fitTv();
 }
 
 document.getElementById('results').addEventListener('click', e => {
