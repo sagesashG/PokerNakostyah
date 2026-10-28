@@ -12,12 +12,17 @@
     --line: rgba(255, 255, 255, 0.14);
     --head: rgba(255, 255, 255, 0.12);
     --turn: rgba(250, 204, 21, 0.28);
+    --glow: #facc15;
     --calc: rgba(250, 204, 21, 0.14);
     --plus-bg: rgba(59, 130, 246, 0.30);
     --plus-fg: #bfdbfe;
     --minus-bg: rgba(248, 113, 113, 0.22);
     --minus-fg: #fecaca;
     --btn: linear-gradient(135deg, #7c3aed, #db2777);
+    --ghost: rgba(255, 255, 255, 0.12);
+    --stick: #1b2150;
+    --bar: linear-gradient(90deg, #7c3aed, #db2777);
+    --bar-bg: rgba(255, 255, 255, 0.15);
     --page: radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.45), transparent 60%),
       radial-gradient(900px 500px at 110% 10%, rgba(236, 72, 153, 0.35), transparent 60%),
       linear-gradient(160deg, #0f172a, #1e1b4b 60%, #172554);
@@ -31,6 +36,7 @@
     --line: #a9c7e6;
     --head: #eef4fb;
     --turn: #ffe98a;
+    --glow: #f59e0b;
     --calc: #fff4c2;
     --plus-bg: #cfe4ff;
     --plus-fg: #1b4f8a;
@@ -38,26 +44,37 @@
     --minus-fg: #8a2b2b;
     --table: rgba(255, 255, 255, 0.92);
     --btn: linear-gradient(135deg, #3b6fd8, #2b59b8);
+    --ghost: #e3edf9;
+    --stick: #f5f9fe;
+    --bar: #3b6fd8;
+    --bar-bg: #d6e4f5;
     --page: linear-gradient(to right, transparent 56px, #f08080 56px 58px, transparent 58px),
       repeating-linear-gradient(to bottom, transparent 0 27px, #9ec5e8 27px 28px),
       #fffdf5;
   }
-  /* Трава: зелёный газон и светлые карточки. */
+  /* Трава: зелёный газон и плотные светлые карточки, чтобы таблица читалась. */
   :root[data-theme="grass"] {
-    --fg: #143d12;
+    --fg: #0f2e0d;
     --muted: #2f5a2a;
-    --card: rgba(255, 255, 255, 0.55);
-    --line: rgba(20, 61, 18, 0.25);
-    --head: rgba(255, 255, 255, 0.6);
+    --card: rgba(255, 255, 255, 0.88);
+    --line: rgba(20, 61, 18, 0.35);
+    --head: rgba(255, 255, 255, 0.95);
     --turn: #ffd54a;
-    --calc: rgba(255, 236, 150, 0.8);
-    --plus-bg: rgba(90, 160, 255, 0.45);
+    --glow: #ffb300;
+    --calc: #ffe98a;
+    --plus-bg: rgba(90, 160, 255, 0.55);
     --plus-fg: #0d2f63;
-    --minus-bg: rgba(255, 120, 120, 0.45);
+    --minus-bg: rgba(255, 120, 120, 0.55);
     --minus-fg: #5a0f0f;
-    --table: rgba(255, 255, 255, 0.55);
+    --table: rgba(255, 255, 255, 0.92);
     --btn: linear-gradient(135deg, #2f8f3a, #6bb83b);
-    --page: linear-gradient(rgba(20, 61, 18, 0.25), rgba(20, 61, 18, 0.25)),
+    --ghost: rgba(255, 255, 255, 0.92);
+    --stick: #e4f2dc;
+    --bar: #2f8f3a;
+    --bar-bg: rgba(20, 61, 18, 0.18);
+    /* Сначала локальный grass.jpg, если его нет рядом — файл с Wikimedia. */
+    --page: linear-gradient(rgba(10, 40, 10, 0.35), rgba(10, 40, 10, 0.35)),
+      url("grass.jpg") center / cover,
       url("https://upload.wikimedia.org/wikipedia/commons/2/29/Green_grass_nature.jpg") center / cover,
       #4f9e3a;
   }
@@ -79,6 +96,7 @@
     color: var(--fg);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 17px;
+    font-variant-numeric: tabular-nums;
     background: var(--page);
     background-attachment: fixed;
   }
@@ -96,7 +114,8 @@
   input, button { font: inherit; border-radius: 12px; border: 1px solid var(--line); padding: 10px 14px; }
   input:not([type=number]) { background: rgba(255, 255, 255, 0.08); color: var(--fg); }
   button { background: var(--btn); color: #fff; border: none; font-weight: 600; cursor: pointer; }
-  button.ghost { background: rgba(255, 255, 255, 0.12); }
+  button.ghost { background: var(--ghost); color: var(--fg); }
+  button.on { background: var(--btn); color: #fff; box-shadow: 0 0 0 3px var(--glow); }
   #status, #whoami { color: var(--muted); font-size: 14px; }
   .title { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
   .place { display: flex; justify-content: space-between; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line); font-size: 18px; }
@@ -106,32 +125,52 @@
   .choice {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
     width: 100%; text-align: left;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--ghost);
     border: 1px solid var(--line);
     color: var(--fg);
   }
   .choice small { color: var(--muted); font-weight: 400; }
   .scroll { overflow-x: auto; border-radius: 18px; }
+  /* Таблица без overflow: иначе липкая колонка не закрепится. */
   table {
     border-collapse: separate;
     border-spacing: 0;
     min-width: 100%;
     background: var(--table);
-    border-radius: 18px;
-    overflow: hidden;
   }
   th, td { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
   th { background: var(--head); font-weight: 700; }
+  th.corner, td.label { position: sticky; left: 0; z-index: 1; background: var(--stick); }
   th.player { font-size: 17px; padding: 10px; }
   th.school { font-size: 12px; color: var(--muted); font-weight: 600; }
-  th.turn { background: var(--turn); }
-  td.label { text-align: left; white-space: nowrap; font-weight: 600; min-width: 130px; }
+  th.turn { background: var(--turn); animation: glow 1.6s ease-in-out infinite; }
+  @keyframes glow {
+    0%, 100% { box-shadow: inset 0 -4px 0 var(--glow); }
+    50% { box-shadow: inset 0 -4px 0 var(--glow), inset 0 0 18px var(--glow); }
+  }
+  @keyframes halo {
+    0%, 100% { box-shadow: 0 0 0 2px var(--glow); }
+    50% { box-shadow: 0 0 0 7px transparent; }
+  }
+  #turnInfo.mine { animation: halo 1.6s ease-in-out infinite; }
+  .bar { height: 6px; border-radius: 3px; background: var(--bar-bg); margin-top: 6px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--bar); transition: width 0.4s; }
+  #chipList button { min-width: 48px; padding: 8px 10px; }
+  .ico { display: inline-block; min-width: 1.5em; text-align: center; margin-right: 4px; }
+  /* Первая колонка по ширине содержимого, без лишнего места. */
+  td.label, th.corner { width: 1%; }
+  td.label { text-align: left; white-space: nowrap; font-weight: 600; }
+  td.label.plus-row { background: linear-gradient(var(--plus-bg), var(--plus-bg)), var(--stick); }
+  td.label.minus-row { background: linear-gradient(var(--minus-bg), var(--minus-bg)), var(--stick); }
   td.plus-row { background: var(--plus-bg); color: var(--plus-fg); }
   td.good { box-shadow: inset 0 0 0 2px #4ade80; font-weight: 800; }
+  /* Следующая ячейка школы 1 и 3: сплошная рамка у игрока, чей сейчас ход, пунктирная у остальных. */
+  td.next { outline: 3px solid var(--glow); outline-offset: -3px; }
+  td.next:not(.live) { outline-style: dashed; }
   td.minus-row { background: var(--minus-bg); color: var(--minus-fg); }
-  td.calc { background: var(--calc); font-weight: 800; white-space: nowrap; }
+  td.calc { background: var(--calc); font-weight: 800; white-space: nowrap; color: var(--fg); }
   /* Красный овал, нарисованный ручкой: незамкнутый, с перехлёстом у начала. */
-  td.calc .bonus { position: relative; display: inline-block; padding: 0 12px; color: #fde68a; }
+  td.calc .bonus { position: relative; display: inline-block; padding: 0 12px; color: var(--fg); }
   td.calc .bonus svg {
     position: absolute;
     left: -14px;
@@ -152,8 +191,9 @@
     padding: 4px;
     border-radius: 8px;
   }
-  td input:disabled { opacity: 0.25; }
-  td input:focus { outline: 2px solid #a78bfa; background: rgba(255, 255, 255, 0.1); }
+  td input:disabled { opacity: 0.7; }
+  td input:focus { outline: 2px solid #a78bfa; background: rgba(255, 255, 255, 0.2); }
+  #sheet.fixing td input:not(:disabled) { outline: 2px dashed #a78bfa; }
   .float-pass {
     position: fixed;
     left: 50%;
@@ -179,6 +219,22 @@
     font-weight: 600;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
     z-index: 10;
+  }
+  .confetti {
+    position: fixed;
+    top: -12px;
+    width: 8px;
+    height: 12px;
+    z-index: 20;
+    pointer-events: none;
+    animation-name: fall;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+  @media (max-width: 480px) {
+    body { font-size: 16px; }
+    td.label { padding-left: 6px; }
   }
 </style>
 </head>
@@ -210,6 +266,7 @@
       <span style="flex: 1"></span>
       <button id="switchBtn" class="ghost">Сменить</button>
       <button id="leaveBtn" class="ghost">Выйти</button>
+      <button id="closeBtn" class="ghost">Закрыть комнату</button>
     </div>
     <details class="add-box">
       <summary>Добавить игрока</summary>
@@ -218,7 +275,6 @@
         <button id="addBtn">Добавить</button>
       </div>
     </details>
-    <button id="passBtn" hidden>Передать ход</button>
   </div>
 
   <div class="card" id="pick" hidden>
@@ -229,6 +285,14 @@
 
   <div class="card" id="results" hidden></div>
   <div class="card" id="turnInfo" style="font-size: 20px; font-weight: 700"></div>
+  <div class="row" id="actions" hidden style="margin: -4px 0 12px">
+    <button id="fixBtn" class="ghost">✎ Исправить ячейку</button>
+    <button id="undoBtn" class="ghost" hidden>↩ Отменить последний ход</button>
+  </div>
+  <div class="card" id="chips" hidden>
+    <div class="title" id="chipsTitle"></div>
+    <div class="row" id="chipList"></div>
+  </div>
   <div class="scroll"><table id="sheet"></table></div>
 </div>
 
@@ -266,20 +330,21 @@ const SCHOOLS = [
 ];
 
 const COMBOS = ['pair', 'twoPair', 'full', 'kare', 'poker'];
+const CELLS_PER_PLAYER = 39;
 // Порядок заполнения школы 1 (сверху вниз). Школа 3 — то же, но в обратном порядке.
 const SEQ = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'plus', 'minus', 'pair', 'twoPair', 'full', 'kare', 'poker'];
 
-// Строки таблицы в порядке отображения.
+// Строки таблицы в порядке отображения. ico — значок перед подписью.
 const ROWS = [
-  ...[1, 2, 3, 4, 5, 6].map(n => ({ k: 'u' + n, t: String(n) })),
+  ...[1, 2, 3, 4, 5, 6].map(n => ({ k: 'u' + n, t: String(n), ico: '⚀⚁⚂⚃⚄⚅'[n - 1] })),
   { k: 'upper', t: 'Сумма', calc: true },
-  { k: 'plus', t: '+', cls: 'plus-row' },
-  { k: 'minus', t: '−', cls: 'minus-row' },
-  { k: 'pair', t: 'П' },
-  { k: 'twoPair', t: '2П' },
-  { k: 'full', t: 'Ф' },
-  { k: 'kare', t: 'К' },
-  { k: 'poker', t: 'Покер' },
+  { k: 'plus', t: '', ico: '➕', cls: 'plus-row' },
+  { k: 'minus', t: '', ico: '➖', cls: 'minus-row' },
+  { k: 'pair', t: 'Пара', ico: '🎲' },
+  { k: 'twoPair', t: 'Две пары', ico: '🎲🎲' },
+  { k: 'full', t: 'Фул Хаус', ico: '🏠' },
+  { k: 'kare', t: 'Каре', ico: '4️⃣' },
+  { k: 'poker', t: 'Покер', ico: '👑' },
   { k: 'total', t: 'Итог школы', calc: true }
 ];
 
@@ -310,6 +375,14 @@ function limitOf(k) {
   return LIMITS[k] ?? Infinity;
 }
 
+// Подсказки для поля ввода: допустимые значения строки.
+function optionsOf(k) {
+  const allowed = allowedValues(k);
+  if (allowed) return allowed;
+  const max = limitOf(k);
+  return Number.isFinite(max) ? range(0, max) : [];
+}
+
 // Наименьшее ненулевое значение строки (0 всегда допустим — «не записано»).
 // «+» и «−» — сумма всех пяти кубиков, поэтому минимум 5 и максимум 30.
 const MINIMUMS = { full: 5, plus: 5, minus: 5 };
@@ -333,6 +406,10 @@ let code = '';
 let state = null;
 // Режим устройства в комнате: { type: 'player', name } — телефон игрока, { type: 'view' } — телевизор, null — ещё не выбран.
 let mode = null;
+// Режим исправления: на своём ходу можно поправить любую уже записанную ячейку.
+let fixMode = false;
+// Ход, на котором последний раз вибрировало устройство.
+let lastTurn = null;
 
 const cellKey = (school, k) => `s${school}_${k}`;
 
@@ -364,12 +441,31 @@ function isOpen(cells, school, k) {
 
 // Ячейку можно менять, если она открыта и либо за этот ход ещё ничего не записано,
 // либо это та самая ячейка, которую записали в этом ходу (исправление ошибки).
-function isEditable(room, playerIndex, school, k) {
+// В режиме исправления можно поправить любую уже заполненную ячейку.
+// Следующая ячейка, которую можно заполнить по порядку: только в школах 1 и 3.
+function nextCell(cells, school) {
+  let seq = null;
+  if (school === 1) seq = SEQ;
+  if (school === 3) seq = [...SEQ].reverse();
+  if (!seq) return null;
+  return seq.find(k => val(cells, school, k) == null) || null;
+}
+
+function isEditable(room, playerIndex, school, k, fix = false) {
   if (!room || (room.turn || 0) !== playerIndex) return false;
   const cells = room.players[playerIndex].cells;
+  if (fix) return val(cells, school, k) != null;
   if (!isOpen(cells, school, k)) return false;
   if (!room.entered) return true;
   return room.enteredCell === cellKey(school, k);
+}
+
+function filledCount(player) {
+  return Object.keys((player && player.cells) || {}).length;
+}
+
+function gameDone(players) {
+  return players.length > 0 && players.every(p => filledCount(p) === CELLS_PER_PLAYER);
 }
 
 function esc(s) {
@@ -397,6 +493,7 @@ function saveMode(c, m) {
 }
 function setMode(m) {
   mode = m;
+  fixMode = false;
   saveMode(code, m);
   render();
 }
@@ -410,10 +507,83 @@ function toast(text) {
   toastTimer = setTimeout(() => { el.hidden = true; }, 5000);
 }
 
+// Звук без файлов: короткие тона через Web Audio. Без поддержки просто молчим.
+let audioCtx = null;
+function tones(seq) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    let t = audioCtx.currentTime;
+    for (const [freq, dur] of seq) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + dur);
+      t += dur * 0.9;
+    }
+  } catch (e) { /* без звука просто ничего не играем */ }
+}
+
+// Конфетти из CSS-элементов. При «уменьшении движения» в системе не запускаем.
+function confetti(n = 60) {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#f43f5e', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#fb923c'];
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('i');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[i % colors.length];
+    el.style.animationDelay = Math.random() * 0.6 + 's';
+    el.style.animationDuration = 2 + Math.random() * 1.5 + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
+
+// Покер записан: короткий фанфар и конфетти.
+function celebratePoker(name) {
+  tones([[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.4]]);
+  confetti(50);
+  toast(`👑 Покер! ${name}`);
+}
+
+// Игра окончена: победитель получает отдельную мелодию и конфетти.
+function celebrateWinner(players) {
+  const winner = players
+    .map(p => ({ name: p.name, total: SCHOOLS.reduce((t, sc) => t + schoolScore(p.cells, sc.id).total, 0) }))
+    .sort((a, b) => b.total - a.total)[0];
+  tones([[523, 0.15], [659, 0.15], [784, 0.15], [1047, 0.15], [1319, 0.5]]);
+  confetti(140);
+  toast(`🏆 Первое место: ${winner.name} (${winner.total})`);
+}
+
+// Сравниваем прошлое и новое состояние комнаты и празднуем изменения.
+function celebrateChanges(prev, next) {
+  const before = prev.players || [];
+  const after = (next && next.players) || [];
+  for (const p of after) {
+    const old = before.find(q => q.name === p.name);
+    if (!old) continue;
+    const newPoker = SCHOOLS.some(sc => {
+      const key = cellKey(sc.id, 'poker');
+      const was = old.cells && old.cells[key];
+      const now = p.cells && p.cells[key];
+      return now > 0 && !was;
+    });
+    if (newPoker) celebratePoker(p.name);
+  }
+  if (!gameDone(before) && gameDone(after)) celebrateWinner(after);
+}
+
 // Итоги появляются, когда у всех игроков заполнены все 39 ячеек. Одинаковые очки делят место.
 function renderResults(players) {
   const box = document.getElementById('results');
-  const done = players.length > 0 && players.every(p => Object.keys(p.cells || {}).length === 39);
+  const done = gameDone(players);
   box.hidden = !done;
   if (!done) return;
   const rows = players
@@ -438,18 +608,32 @@ function render() {
   const pick = document.getElementById('pick');
   const sheet = document.getElementById('sheet');
   renderResults(players);
+  // Таблица перерисовывается, поэтому поле и его подсказки уже не актуальны.
+  chipsBox.hidden = true;
 
   // Экран выбора: кто вы или телевизор.
   pick.hidden = !!mode;
-  // Кнопка передачи хода внизу: появляется на телефоне игрока, чей сейчас ход.
+  // Кнопки под итогами: исправление и отмена. Видны только на телефоне игрока, чей сейчас ход.
   const myIndex = mode && mode.type === 'player' ? players.findIndex(p => p.name === mode.name) : -1;
   const myTurn = myIndex >= 0 && myIndex === turn;
   const floatPass = document.getElementById('floatPass');
   floatPass.hidden = !myTurn;
   floatPass.textContent = state && state.entered ? 'Передать ход' : 'Пропустить ход';
-  document.getElementById('passBtn').hidden = true;
   document.getElementById('whoami').textContent =
     !mode ? '' : mode.type === 'player' ? `Вы: ${mode.name}` : 'Режим телевизора: все игроки';
+
+  const undoBtn = document.getElementById('undoBtn');
+  const fixBtn = document.getElementById('fixBtn');
+  document.getElementById('actions').hidden = !myTurn;
+  undoBtn.hidden = !(myTurn && state && state.undo && state.undo.p === turn);
+  fixBtn.classList.toggle('on', fixMode);
+  fixBtn.textContent = fixMode ? '✎ Исправление: вкл' : '✎ Исправить ячейку';
+  sheet.classList.toggle('fixing', myTurn && fixMode);
+  document.getElementById('turnInfo').classList.toggle('mine', myTurn);
+
+  // Вибрация, когда ход переходит к этому телефону.
+  if (myTurn && lastTurn !== null && lastTurn !== turn && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  lastTurn = turn;
 
   if (!mode) {
     document.getElementById('pickList').innerHTML = players.map(p =>
@@ -467,18 +651,22 @@ function render() {
     visible = idx >= 0 ? [idx] : [];
   }
 
-  let html = '<tr><th></th>' + visible.map(i => {
+  let html = '<tr><th class="corner"></th>' + visible.map(i => {
     const p = players[i];
     const total = SCHOOLS.reduce((t, sc) => t + schoolScore(p.cells, sc.id).total, 0);
-    return `<th class="player ${i === turn ? 'turn' : ''}" colspan="3">${esc(p.name)} · ${total}</th>`;
+    const filled = filledCount(p);
+    const pct = Math.round(filled / CELLS_PER_PLAYER * 100);
+    return `<th class="player ${i === turn ? 'turn' : ''}" colspan="3" title="Заполнено ${filled} из ${CELLS_PER_PLAYER}">` +
+      `<div>${esc(p.name)} · ${total}</div><div class="bar"><i style="width: ${pct}%"></i></div></th>`;
   }).join('') + '</tr>';
 
-  html += '<tr><th></th>' + visible.map(() =>
+  html += '<tr><th class="corner"></th>' + visible.map(() =>
     SCHOOLS.map(sc => `<th class="school">${sc.title}</th>`).join('')
   ).join('') + '</tr>';
 
   for (const r of ROWS) {
-    html += `<tr><td class="label ${r.cls || ''}">${esc(r.t)}</td>`;
+    const ico = r.ico ? `<span class="ico">${r.ico}</span>` : '';
+    html += `<tr><td class="label ${r.cls || ''}">${ico}${esc(r.t)}</td>`;
     visible.forEach(i => {
       const p = players[i];
       SCHOOLS.forEach(sc => {
@@ -495,13 +683,14 @@ function render() {
         } else {
           const v = val(p.cells, sc.id, r.k);
           // Вносить может только игрок, чей сейчас ход, и только на своём телефоне.
-          const editable = mode.type === 'player' && isEditable(state, i, sc.id, r.k);
+          const editable = mode.type === 'player' && isEditable(state, i, sc.id, r.k, fixMode);
           const max = limitOf(r.k);
           const maxAttr = Number.isFinite(max) ? ` max="${max}"` : '';
           const cell = `data-p="${i}" data-s="${sc.id}" data-k="${r.k}"`;
           // «Хорошее» значение: в «+» больше 22, в «−» меньше 10.
           const good = v != null && ((r.k === 'plus' && v > 22) || (r.k === 'minus' && v < 10));
-          html += `<td class="${r.cls || ''} ${good ? 'good' : ''}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} ${cell}></td>`;
+          const next = nextCell(p.cells, sc.id) === r.k ? `next ${i === turn ? 'live' : ''}` : '';
+          html += `<td class="${r.cls || ''} ${good ? 'good' : ''} ${next}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} ${cell}></td>`;
         }
       });
     });
@@ -522,13 +711,17 @@ function render() {
 
 function connect(c) {
   code = c;
+  fixMode = false;
+  lastTurn = null;
   document.getElementById('join').hidden = true;
   document.getElementById('room').hidden = false;
   history.replaceState(null, '', '#' + code);
   mode = loadMode(code);
 
   db.ref('rooms/' + code).on('value', snap => {
+    const prev = state;
     state = snap.val();
+    if (prev && state) celebrateChanges(prev, state);
     render();
   }, err => toast('Нет доступа к базе: ' + err.message));
 
@@ -563,6 +756,30 @@ function showRooms() {
       active.length ? 'Активные комнаты' : 'Активных комнат нет';
   });
 }
+
+// Подсказки значений: кнопки с допустимыми значениями строки под карточкой «Ходит».
+// Поле ввода — datalist — на телефонах показывал не все варианты, поэтому здесь кнопки.
+let activeInput = null;
+const chipsBox = document.getElementById('chips');
+const chipList = document.getElementById('chipList');
+// Нажатие на кнопку не уводит фокус с поля, иначе поле закроется раньше, чем запишется значение.
+chipsBox.addEventListener('pointerdown', e => e.preventDefault());
+chipList.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-v]');
+  if (!btn || !activeInput) return;
+  activeInput.value = btn.dataset.v;
+  activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+});
+document.getElementById('sheet').addEventListener('focusin', e => {
+  const el = e.target;
+  if (!el.matches('input[data-k]') || el.disabled) return;
+  activeInput = el;
+  const row = ROWS.find(r => r.k === el.dataset.k);
+  document.getElementById('chipsTitle').textContent = `${row.t || row.ico}: выберите значение`;
+  chipList.innerHTML = optionsOf(row.k).map(v => `<button type="button" data-v="${v}">${v}</button>`).join('');
+  chipsBox.hidden = false;
+});
+document.getElementById('sheet').addEventListener('focusout', () => { chipsBox.hidden = true; });
 
 document.getElementById('roomList').addEventListener('click', e => {
   const btn = e.target.closest('button[data-room]');
@@ -611,29 +828,73 @@ document.getElementById('addBtn').onclick = () => {
 
 // Передача хода: следующий игрок, запись этого хода сбрасывается.
 const passTurn = () => {
+  fixMode = false;
   db.ref(`rooms/${code}`).transaction(room => {
     if (!room || !room.players || !room.players.length) return room;
     room.turn = ((room.turn || 0) + 1) % room.players.length;
     room.entered = false;
     room.enteredCell = null;
+    room.undo = null;
     room.updatedAt = Date.now();
     return room;
   });
 };
-document.getElementById('passBtn').onclick = passTurn;
 document.getElementById('floatPass').onclick = passTurn;
 
+// Закрыть комнату: удаляет её у всех, кто в ней.
+document.getElementById('closeBtn').onclick = () => {
+  if (!confirm('Закрыть комнату? Все данные комнаты будут удалены.')) return;
+  db.ref(`rooms/${code}`).remove();
+  saveMode(code, null);
+  leaveRoom();
+};
+
+// Режим исправления: любая заполненная ячейка на своём ходу становится доступной.
+document.getElementById('fixBtn').onclick = () => {
+  fixMode = !fixMode;
+  render();
+};
+
+// Отмена последнего хода: возвращает ячейку к прежнему значению.
+document.getElementById('undoBtn').onclick = () => {
+  db.ref(`rooms/${code}`).transaction(room => {
+    if (!room || !room.undo || !room.players) return room;
+    const u = room.undo;
+    if ((room.turn || 0) !== u.p) return room;
+    const player = room.players[u.p];
+    player.cells = player.cells || {};
+    if (u.prev == null) delete player.cells[u.key];
+    else player.cells[u.key] = u.prev;
+    room.entered = u.entered;
+    room.enteredCell = u.enteredCell;
+    room.undo = null;
+    room.updatedAt = Date.now();
+    return room;
+  });
+};
+
 // Одно значение за ход. Запись не передаёт ход: его можно исправить и передать вручную.
-function writeCell(playerIndex, school, k, v) {
+// В режиме исправления запись не меняет признак «ход уже записан».
+function writeCell(playerIndex, school, k, v, fix = false) {
   db.ref(`rooms/${code}`).transaction(room => {
     if (!room || !room.players || !room.players.length) return room;
-    if (!isEditable(room, playerIndex, school, k)) return;
+    if (!isEditable(room, playerIndex, school, k, fix)) return;
     if (checkValue(k, v)) return;
     const player = room.players[playerIndex];
     player.cells = player.cells || {};
-    player.cells[cellKey(school, k)] = v;
-    room.entered = true;
-    room.enteredCell = cellKey(school, k);
+    const key = cellKey(school, k);
+    room.undo = {
+      p: playerIndex,
+      key,
+      prev: player.cells[key] ?? null,
+      entered: !!room.entered,
+      enteredCell: room.enteredCell || null
+    };
+    player.cells[key] = v;
+    if (!fix) {
+      room.entered = true;
+      room.enteredCell = key;
+    }
     room.updatedAt = Date.now();
     return room;
   }, (err, committed) => {
@@ -656,7 +917,10 @@ document.getElementById('sheet').addEventListener('change', e => {
     render();
     return;
   }
-  writeCell(Number(el.dataset.p), Number(el.dataset.s), k, v);
+  const school = Number(el.dataset.s);
+  const playerIndex = Number(el.dataset.p);
+  const cells = state && state.players[playerIndex].cells;
+  writeCell(playerIndex, school, k, v, fixMode && val(cells, school, k) != null);
 });
 
 // Тема оформления запоминается на устройстве.
@@ -680,8 +944,11 @@ function leaveRoom() {
   code = '';
   state = null;
   mode = null;
+  fixMode = false;
+  lastTurn = null;
   history.replaceState(null, '', location.pathname);
   document.getElementById('room').hidden = true;
+  document.getElementById('floatPass').hidden = true;
   document.getElementById('join').hidden = false;
   document.getElementById('code').value = '';
 }
@@ -697,6 +964,7 @@ document.getElementById('results').addEventListener('click', e => {
       room.turn = 0;
       room.entered = false;
       room.enteredCell = null;
+      room.undo = null;
       room.updatedAt = Date.now();
       return room;
     });
