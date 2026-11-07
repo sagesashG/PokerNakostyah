@@ -581,6 +581,29 @@ function confetti(n = 60) {
   }
 }
 
+// Ячейку сожгли нулём: короткое грустное «о-оу» — три ноты вниз с подъездом.
+function sadZero() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    [[392, 0, 0.22], [330, 0.2, 0.22], [262, 0.4, 0.8]].forEach(([freq, offset, dur]) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t0 + offset);
+      // Лёгкий спуск внутри ноты — получается «о-оу», а не три отдельных пика.
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.86, t0 + offset + dur);
+      gain.gain.setValueAtTime(0.0001, t0 + offset);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + offset + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0 + offset);
+      osc.stop(t0 + offset + dur + 0.02);
+    });
+  } catch (e) { /* без звука просто молчим */ }
+}
+
 // Покер записан: короткий фанфар и конфетти.
 function celebratePoker(name) {
   tones([[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.4]]);
@@ -612,6 +635,15 @@ function celebrateChanges(prev, next) {
       return now > 0 && !was;
     });
     if (newPoker) celebratePoker(p.name);
+    // Ноль — «сожжённая» ячейка: игрок от неё отказался, играем грустный звук.
+    // Отличаем «записали 0» от «ячейки ещё не было»: пустая ячейка значения не имеет.
+    const burntZero = Object.keys(p.cells || {}).some(key => {
+      const now = Number(p.cells[key]);
+      const had = old.cells && old.cells[key] != null;
+      const was = had ? Number(old.cells[key]) : null;
+      return now === 0 && was !== 0;
+    });
+    if (burntZero) sadZero();
   }
   if (!gameDone(before) && gameDone(after)) celebrateWinner(after);
 }
