@@ -724,10 +724,11 @@ function render() {
   sheet.classList.toggle('fixing', myTurn && fixMode);
   document.getElementById('turnInfo').classList.toggle('mine', myTurn);
 
-  // Ход перешёл к другому игроку: звук слышат все устройства комнаты.
-  if (lastTurn !== null && lastTurn !== turn) turnChime();
-  // Вибрация, когда ход переходит к этому телефону.
-  if (myTurn && lastTurn !== null && lastTurn !== turn && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  // Ход наступил для этого телефона: звук и вибрация только у того, кто теперь ходит.
+  if (myTurn && lastTurn !== null && lastTurn !== turn) {
+    turnChime();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  }
   lastTurn = turn;
 
   if (!mode) {
