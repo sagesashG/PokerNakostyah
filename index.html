@@ -604,6 +604,27 @@ function sadZero() {
   } catch (e) { /* без звука просто молчим */ }
 }
 
+// Ход перешёл к следующему игроку: короткий восходящий «дзинь» (659 → 880 Гц).
+function turnChime() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    [[659, 0, 0.12], [880, 0.1, 0.16]].forEach(([freq, offset, dur]) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t0 + offset);
+      gain.gain.setValueAtTime(0.0001, t0 + offset);
+      gain.gain.exponentialRampToValueAtTime(0.14, t0 + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0 + offset);
+      osc.stop(t0 + offset + dur + 0.02);
+    });
+  } catch (e) { /* без звука просто молчим */ }
+}
+
 // Покер записан: короткий фанфар и конфетти.
 function celebratePoker(name) {
   tones([[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.4]]);
@@ -703,6 +724,8 @@ function render() {
   sheet.classList.toggle('fixing', myTurn && fixMode);
   document.getElementById('turnInfo').classList.toggle('mine', myTurn);
 
+  // Ход перешёл к другому игроку: звук слышат все устройства комнаты.
+  if (lastTurn !== null && lastTurn !== turn) turnChime();
   // Вибрация, когда ход переходит к этому телефону.
   if (myTurn && lastTurn !== null && lastTurn !== turn && navigator.vibrate) navigator.vibrate([200, 100, 200]);
   lastTurn = turn;
