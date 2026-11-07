@@ -197,13 +197,16 @@
   .float-pass {
     position: fixed;
     left: 50%;
-    bottom: 20px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
     padding: 16px 28px;
     font-size: 18px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
     z-index: 6;
   }
+  /* Кнопка «Передать ход» висит над таблицей: оставляем под неё место,
+     чтобы нижние строки (Каре, Покер, Итог) можно было прокрутить выше кнопки. */
+  body.has-pass { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   .credit { position: fixed; left: 8px; bottom: 6px; font-size: 11px; color: #fff; opacity: 0.85; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
   .credit a { color: #fff; }
   #toast {
@@ -458,13 +461,22 @@ function nextCell(cells, school) {
   return seq.find(k => val(cells, school, k) == null) || null;
 }
 
+// Ноль разрешён в любой ячейке: так «сжигают» ненужную строку, даже если школа
+// до неё ещё не дошла по порядку. Ненулевое значение — только в открытую ячейку.
+function valueAllowed(cells, school, k, v) {
+  return v === 0 || isOpen(cells, school, k);
+}
+
+// Писать можно в любую незаполненную ячейку своей колонки (значение проверит valueAllowed),
+// а также переписать ту самую ячейку, которую записали в этом ходу (исправление опечатки).
+// В режиме исправления можно поправить любую уже заполненную ячейку.
 function isEditable(room, playerIndex, school, k, fix = false) {
   if (!room || (room.turn || 0) !== playerIndex) return false;
   const cells = room.players[playerIndex].cells;
-  if (fix) return val(cells, school, k) != null;
-  if (!isOpen(cells, school, k)) return false;
-  if (!room.entered) return true;
-  return room.enteredCell === cellKey(school, k);
+  const filled = val(cells, school, k) != null;
+  if (fix) return filled;
+  if (room.entered) return room.enteredCell === cellKey(school, k);
+  return !filled;
 }
 
 function filledCount(player) {
@@ -626,6 +638,8 @@ function render() {
   const floatPass = document.getElementById('floatPass');
   floatPass.hidden = !myTurn;
   floatPass.textContent = state && state.entered ? 'Передать ход' : 'Пропустить ход';
+  // Пока кнопка висит над таблицей, держим внизу запас места, чтобы она не закрывала нижние строки.
+  document.body.classList.toggle('has-pass', !floatPass.hidden);
   document.getElementById('whoami').textContent =
     !mode ? '' : mode.type === 'player' ? `Вы: ${mode.name}` : 'Режим телевизора: все игроки';
 
@@ -698,7 +712,10 @@ function render() {
           // «Хорошее» значение: в «+» больше 22, в «−» меньше 10.
           const good = v != null && ((r.k === 'plus' && v > 22) || (r.k === 'minus' && v < 10));
           const next = nextCell(p.cells, sc.id) === r.k ? `next ${i === turn ? 'live' : ''}` : '';
-          html += `<td class="${r.cls || ''} ${good ? 'good' : ''} ${next}"><input type="number" min="0"${maxAttr} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} ${cell}></td>`;
+          // Ячейка ещё закрыта по порядку: обычная на вид, но принимает только 0 (подсказка во всплывающей подсказке).
+          const zeroOnly = editable && !isOpen(p.cells, sc.id, r.k);
+          const hint = zeroOnly ? ' title="Закрыта по порядку школы: сюда можно записать только 0"' : '';
+          html += `<td class="${r.cls || ''} ${good ? 'good' : ''} ${next}"><input type="number" min="0"${maxAttr}${hint} value="${v == null ? '' : v}" ${editable ? '' : 'disabled'} ${cell}></td>`;
         }
       });
     });
@@ -806,8 +823,15 @@ document.getElementById('sheet').addEventListener('focusin', e => {
   if (!el.matches('input[data-k]') || el.disabled) return;
   activeInput = el;
   const row = ROWS.find(r => r.k === el.dataset.k);
-  document.getElementById('chipsTitle').textContent = `${row.t || row.ico}: выберите значение`;
-  chipList.innerHTML = optionsOf(row.k).map(v => `<button type="button" data-v="${v}">${v}</button>`).join('');
+  const player = state && state.players[Number(el.dataset.p)];
+  const cells = (player && player.cells) || {};
+  // В закрытую по порядку ячейку можно записать только 0 — не предлагаем остальные варианты.
+  const zeroOnly = !fixMode && !isOpen(cells, Number(el.dataset.s), row.k);
+  document.getElementById('chipsTitle').textContent = zeroOnly
+    ? `${row.t || row.ico}: закрыта по порядку — сюда можно записать только 0`
+    : `${row.t || row.ico}: выберите значение`;
+  const values = zeroOnly ? [0] : optionsOf(row.k);
+  chipList.innerHTML = values.map(v => `<button type="button" data-v="${v}">${v}</button>`).join('');
   chipsBox.hidden = false;
 });
 document.getElementById('sheet').addEventListener('focusout', () => { chipsBox.hidden = true; });
@@ -906,11 +930,14 @@ document.getElementById('undoBtn').onclick = () => {
 
 // Одно значение за ход. Запись не передаёт ход: его можно исправить и передать вручную.
 // В режиме исправления запись не меняет признак «ход уже записан».
+// Ноль принимается в любой ячейке, ненулевое значение — только в открытую по порядку.
 function writeCell(playerIndex, school, k, v, fix = false) {
   db.ref(`rooms/${code}`).transaction(room => {
     if (!room || !room.players || !room.players.length) return room;
     if (!isEditable(room, playerIndex, school, k, fix)) return;
     if (checkValue(k, v)) return;
+    const cells = room.players[playerIndex].cells || {};
+    if (!valueAllowed(cells, school, k, v)) return;
     const player = room.players[playerIndex];
     player.cells = player.cells || {};
     const key = cellKey(school, k);
@@ -930,7 +957,7 @@ function writeCell(playerIndex, school, k, v, fix = false) {
     return room;
   }, (err, committed) => {
     if (err || !committed) {
-      toast('Сейчас ход другого игрока или ячейка пока закрыта.');
+      toast('Не записалось: сейчас ход другого игрока, ход уже сделан или в эту ячейку нельзя поставить это значение.');
       render();
     }
   });
@@ -950,7 +977,12 @@ document.getElementById('sheet').addEventListener('change', e => {
   }
   const school = Number(el.dataset.s);
   const playerIndex = Number(el.dataset.p);
-  const cells = state && state.players[playerIndex].cells;
+  const cells = state && state.players[playerIndex] && state.players[playerIndex].cells;
+  if (!valueAllowed(cells, school, k, v)) {
+    toast('Эта ячейка закрыта по порядку школы: сюда можно записать только 0.');
+    render();
+    return;
+  }
   writeCell(playerIndex, school, k, v, fixMode && val(cells, school, k) != null);
 });
 
@@ -980,6 +1012,7 @@ function leaveRoom() {
   history.replaceState(null, '', location.pathname);
   document.getElementById('room').hidden = true;
   document.getElementById('floatPass').hidden = true;
+  document.body.classList.remove('has-pass');
   document.getElementById('join').hidden = false;
   document.getElementById('code').value = '';
   fitTv();
